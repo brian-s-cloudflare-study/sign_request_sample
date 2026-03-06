@@ -7,7 +7,7 @@ WAF Custom Rule과 Rate Limiting을 설정하는 방법을 안내합니다.
 
 ## 1. 사전 준비
 
-### 1.1 Worker 배���
+### 1.1 Worker 배포
 
 ```bash
 # 시크릿 설정 (대화형 프롬프트)
@@ -62,7 +62,7 @@ not is_timed_hmac_valid_v0(
 )
 ```
 
-### 2.4 파라��터 설명
+### 2.4 파라미터 설명
 
 ```
 is_timed_hmac_valid_v0(
@@ -117,7 +117,7 @@ resource "cloudflare_ruleset" "waf_custom" {
 
 ### 3.1 목적
 
-`/slots` 엔드포인트에 대한 과도한 요청을 제한하��,
+`/slots` 엔드포인트에 대한 과도한 요청을 제한하여,
 캘린더 날짜를 빠르게 반복 클릭하는 등의 남용을 방지합니다.
 
 ### 3.2 설정 방법 (Dashboard)
@@ -181,7 +181,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phas
 ## 4. 실행 순서 (요청 처리 파이프라인)
 
 ```
-클라이언��� 요청
+클라이언트 요청
     |
     v
 +-----------------------------+
@@ -206,7 +206,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phas
 ```
 
 WAF 규칙은 Worker **이전**에 실행됩니다. 따라서:
-- Rate limit�� 먼저 적용되고
+- Rate limit이 먼저 적용되고
 - HMAC 검증이 두 번째로 적용되고
 - Worker는 마지막 레이어로 세밀한 제어를 수행합니다
 
@@ -214,14 +214,14 @@ WAF 규칙은 Worker **이전**에 실행됩니다. 따라서:
 
 ## 5. 테스트 방법
 
-### 5.1 WAF Rule ���스트
+### 5.1 WAF Rule 테스트
 
 ```bash
 # HMAC 없이 요청 -> Managed Challenge 반환 (HTML)
 curl -v https://your-worker.workers.dev/slots?date=2026-03-14
 
-# 유효��� HMAC으로 요청 -> 200 + JSON
-# (��인 페이지에서 발급받은 토큰 사��)
+# 유효한 HMAC으로 요청 -> 200 + JSON
+# (메인 페이지에서 발급받은 토큰 사용)
 curl https://your-worker.workers.dev/slots?date=2026-03-14&verify=TIMESTAMP-BASE64MAC
 ```
 
