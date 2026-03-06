@@ -1,0 +1,26 @@
+{
+	"name": "sign-request-sample",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
+		"cf-typegen": "wrangler types",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@biomejs/biome": "^2.0.0",
+		"@cloudflare/vitest-pool-workers": "^0.8.0",
+		"@cloudflare/workers-types": "^4.20250305.0",
+		"@types/node": "^22.0.0",
+		"typescript": "^5.7.0",
+		"vitest": "^3.0.0",
+		"wrangler": "^4.0.0"
+	}
+}

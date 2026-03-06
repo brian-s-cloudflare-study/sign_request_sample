@@ -1,0 +1,8 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "sign-request-sample"
+main = "src/index.ts"
+compatibility_date = "2026-03-05"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
