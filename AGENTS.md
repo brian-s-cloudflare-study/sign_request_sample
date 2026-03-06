@@ -43,12 +43,12 @@ The Worker provides a second verification layer with its own Turnstile widget fo
 
 ### Reference UX (캐치테이블 패턴)
 
-이 샘플은 캐치테이블(https://app.catchtable.co.kr)의 예약 흐름을 참���하여 구현합니다.
+이 샘플은 캐치테이블(https://app.catchtable.co.kr)의 예약 흐름을 참고���여 구현합니다.
 
 **관찰된 패턴:**
 
 1. **페이지 접근 → 토큰 발행**: 매장 페이지 로드 시 `/api/v3/init` 호출로 세션 초기화.
-   이후 매장 정보, 예약 가능 시��� 등 API 호출에 해당 토큰 사용.
+   이후 매장 정보, 예약 가능 시간대 등 API 호출에 해당 토큰 사용.
 2. **예약하기 → 캘린더**: "날짜·인원·시간" 선택기 클릭 시 캘린더 표시.
    날짜 선택마다 `POST /api/reservation/v1/dining/time-slots` 호출하여 해당 날짜의
    가용 시간대 조회.
@@ -60,11 +60,11 @@ The Worker provides a second verification layer with its own Turnstile widget fo
 
 ```
 GET  /                → 메인 페이지 + signed token 발행 (HMAC)
-GET  /slots?date=X    → 날짜별 데이터 조회 (signed URL ��요)
+GET  /slots?date=X    → 날짜별 데이터 조회 (signed URL 필요)
      ├─ valid token   → 200 + 데이터 응답
      ├─ rate limited  → 429 + retry-after
-     └─ invalid/없음  → Turnstile challenge 페���지 반환
-POST /verify-turnstile → challenge ��과 → signed URL 발급 → redirect
+     └─ invalid/없���  → Turnstile challenge 페이지 반환
+POST /verify-turnstile → challenge 통과 → signed URL 발급 → redirect
 ```
 
 ---
@@ -217,7 +217,7 @@ sign_request_sample/
 │   └── types.ts           # Shared types (if needed beyond Env)
 ├── test/
 │   ├── sign.test.ts       # Signing tests
-��   ├── verify.test.ts     # Verification tests
+│   ├── verify.test.ts     # Verification tests
 │   └── turnstile.test.ts  # Turnstile validation tests
 ├── wrangler.toml          # Wrangler configuration
 ├── tsconfig.json          # TypeScript config
