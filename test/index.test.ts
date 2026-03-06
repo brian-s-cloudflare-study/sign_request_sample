@@ -19,7 +19,7 @@ describe('Worker fetch handler', () => {
 
 			const html = await response.text();
 			expect(html).toContain('<!DOCTYPE html>');
-			expect(html).toContain('<h2>');
+			expect(html).toContain('section-title');
 			expect(html).toContain('calendar');
 		});
 
