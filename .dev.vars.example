@@ -1,0 +1,5 @@
+# HMAC signing secret — used for request signing/verification
+SECRET_DATA=change-me-to-a-random-string
+
+# Turnstile secret key — from Cloudflare dashboard > Turnstile > site > secret key
+TURNSTILE_SECRET_KEY=change-me-to-your-turnstile-secret

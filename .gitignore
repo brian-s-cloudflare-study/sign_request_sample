@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Build
+dist/
+worker-configuration.d.ts
+
+# OS
+.DS_Store
+Thumbs.db
