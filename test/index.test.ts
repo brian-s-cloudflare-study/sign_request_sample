@@ -27,7 +27,7 @@ describe('Worker fetch handler', () => {
 			const response = await SELF.fetch('https://example.com/');
 			const html = await response.text();
 
-			const tokenMatch = html.match(/const TOKEN = '(\d+-[A-Za-z0-9+/]+=*)'/);
+			const tokenMatch = html.match(/let TOKEN = '(\d+-[A-Za-z0-9+/]+=*)'/);
 			expect(tokenMatch).not.toBeNull();
 		});
 	});
@@ -89,6 +89,47 @@ describe('Worker fetch handler', () => {
 			expect(response.status).toBe(403);
 			const html = await response.text();
 			expect(html).toContain('보안 확인');
+		});
+
+		it('should return 429 without X-Require-Turnstile for early rate limit hits', async () => {
+			const token = await createVerifyToken();
+			const ip = `10.99.0.${Math.floor(Math.random() * 255)}`;
+			const headers = { 'CF-Connecting-IP': ip };
+
+			for (let i = 0; i < 6; i++) {
+				await SELF.fetch(
+					`https://example.com/slots?date=2026-03-14&verify=${encodeURIComponent(token)}`,
+					{ headers },
+				);
+			}
+
+			const res = await SELF.fetch(
+				`https://example.com/slots?date=2026-03-14&verify=${encodeURIComponent(token)}`,
+				{ headers },
+			);
+			expect(res.status).toBe(429);
+			expect(res.headers.get('Retry-After')).toBeTruthy();
+			expect(res.headers.get('X-Require-Turnstile')).toBeNull();
+		});
+
+		it('should return 429 with X-Require-Turnstile after escalation threshold', async () => {
+			const token = await createVerifyToken();
+			const ip = `10.88.0.${Math.floor(Math.random() * 255)}`;
+			const headers = { 'CF-Connecting-IP': ip };
+
+			for (let i = 0; i < 9; i++) {
+				await SELF.fetch(
+					`https://example.com/slots?date=2026-03-14&verify=${encodeURIComponent(token)}`,
+					{ headers },
+				);
+			}
+
+			const res = await SELF.fetch(
+				`https://example.com/slots?date=2026-03-14&verify=${encodeURIComponent(token)}`,
+				{ headers },
+			);
+			expect(res.status).toBe(429);
+			expect(res.headers.get('X-Require-Turnstile')).toBe('true');
 		});
 
 		it('should preserve date in challenge redirect form', async () => {
