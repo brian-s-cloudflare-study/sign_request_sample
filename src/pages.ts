@@ -1,10 +1,11 @@
-export function renderMainPage(verifyToken: string): string {
+export function renderMainPage(verifyToken: string, turnstileSiteKey: string): string {
 	return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>온류 — 예약 샘플</title>
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 	<style>
 		:root {
 			--primary: #ff5a00;
@@ -491,6 +492,63 @@ export function renderMainPage(verifyToken: string): string {
 			from { opacity: 0; transform: translateY(14px); }
 			to { opacity: 1; transform: translateY(0); }
 		}
+
+		.turnstile-overlay {
+			display: none;
+			position: fixed;
+			inset: 0;
+			z-index: 9999;
+			background: rgba(0,0,0,0.5);
+			backdrop-filter: blur(4px);
+			-webkit-backdrop-filter: blur(4px);
+			align-items: center;
+			justify-content: center;
+			animation: overlayIn 0.25s ease;
+		}
+		.turnstile-overlay.visible { display: flex; }
+		@keyframes overlayIn {
+			from { opacity: 0; }
+			to { opacity: 1; }
+		}
+		.turnstile-modal {
+			background: var(--white);
+			border-radius: var(--radius);
+			padding: 32px 28px;
+			box-shadow: var(--shadow-md);
+			text-align: center;
+			max-width: 380px;
+			width: 90%;
+			animation: modalIn 0.3s ease;
+		}
+		@keyframes modalIn {
+			from { opacity: 0; transform: translateY(20px) scale(0.95); }
+			to { opacity: 1; transform: translateY(0) scale(1); }
+		}
+		.turnstile-modal h2 {
+			font-size: 17px;
+			font-weight: 700;
+			margin-bottom: 6px;
+			color: var(--text);
+		}
+		.turnstile-modal p {
+			font-size: 13px;
+			color: var(--text-muted);
+			margin-bottom: 20px;
+			line-height: 1.5;
+		}
+		.turnstile-widget {
+			display: flex;
+			justify-content: center;
+			margin-bottom: 16px;
+			min-height: 65px;
+		}
+		.turnstile-status {
+			font-size: 12px;
+			color: var(--text-muted);
+			min-height: 18px;
+		}
+		.turnstile-status.success { color: var(--success); font-weight: 600; }
+		.turnstile-status.error { color: var(--error); }
 	</style>
 </head>
 <body>
@@ -553,8 +611,18 @@ export function renderMainPage(verifyToken: string): string {
 
 </div>
 
+<div class="turnstile-overlay" id="turnstile-overlay">
+	<div class="turnstile-modal">
+		<h2>보안 확인이 필요합니다</h2>
+		<p>요청이 너무 빠릅니다. 아래 확인을 완료하면 다시 이용할 수 있습니다.</p>
+		<div class="turnstile-widget" id="turnstile-widget"></div>
+		<div class="turnstile-status" id="turnstile-status"></div>
+	</div>
+</div>
+
 <script>
-const TOKEN = '${verifyToken}';
+let TOKEN = '${verifyToken}';
+const TURNSTILE_SITE_KEY = '${turnstileSiteKey}';
 let currentDate = new Date();
 let selectedDate = null;
 let requestCount = 0;
@@ -698,21 +766,22 @@ async function fetchSlots(date) {
 
 		if (res.status === 429) {
 			const retryAfter = parseInt(res.headers.get('Retry-After') || '10', 10);
-			log('GET', '/slots?date=' + date, 429, 'Rate limited \u2014 retry after ' + retryAfter + 's');
-			startRetryCountdown(retryAfter, date);
+			const requireTurnstile = res.headers.get('X-Require-Turnstile') === 'true';
+			log('GET', '/slots?date=' + date, 429,
+				requireTurnstile
+					? 'Turnstile required'
+					: 'Rate limited \u2014 retry after ' + retryAfter + 's');
+			if (requireTurnstile) {
+				showTurnstileModal(date);
+			} else {
+				startRetryCountdown(retryAfter, date);
+			}
 			return;
 		}
 
 		if (res.status === 403) {
-			const text = await res.text();
-			if (text.includes('cf-turnstile')) {
-				document.open();
-				document.write(text);
-				document.close();
-				return;
-			}
-			document.getElementById('slots-container').innerHTML =
-				'<div class="error-state">\ud83d\udeab ' + text + '</div>';
+			log('GET', '/slots?date=' + date, 403, 'HMAC invalid \u2014 Turnstile required');
+			showTurnstileModal(date);
 			return;
 		}
 
@@ -746,6 +815,75 @@ document.getElementById('next-month').addEventListener('click', function() {
 	currentDate.setMonth(currentDate.getMonth() + 1);
 	renderCalendar('forward');
 });
+
+let turnstileWidgetId = null;
+
+function showTurnstileModal(date) {
+	const overlay = document.getElementById('turnstile-overlay');
+	const statusEl = document.getElementById('turnstile-status');
+	statusEl.textContent = '';
+	statusEl.className = 'turnstile-status';
+	overlay.classList.add('visible');
+
+	if (turnstileWidgetId !== null) {
+		turnstile.remove(turnstileWidgetId);
+		turnstileWidgetId = null;
+	}
+
+	turnstileWidgetId = turnstile.render('#turnstile-widget', {
+		sitekey: TURNSTILE_SITE_KEY,
+		callback: function(token) {
+			onTurnstileSuccess(token, date);
+		},
+		'error-callback': function() {
+			statusEl.textContent = '\ud655\uc778\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4. \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.';
+			statusEl.className = 'turnstile-status error';
+		},
+	});
+}
+
+function hideTurnstileModal() {
+	const overlay = document.getElementById('turnstile-overlay');
+	overlay.classList.remove('visible');
+	if (turnstileWidgetId !== null) {
+		turnstile.remove(turnstileWidgetId);
+		turnstileWidgetId = null;
+	}
+}
+
+async function onTurnstileSuccess(turnstileToken, date) {
+	const statusEl = document.getElementById('turnstile-status');
+	statusEl.textContent = '\ud655\uc778 \uc644\ub8cc, \ucc98\ub9ac \uc911...';
+	statusEl.className = 'turnstile-status success';
+	log('POST', '/verify-turnstile', 0, 'Turnstile token acquired');
+
+	try {
+		const form = new FormData();
+		form.append('cf-turnstile-response', turnstileToken);
+		form.append('redirect', '/slots?date=' + date);
+		const res = await fetch('/verify-turnstile', {
+			method: 'POST',
+			body: form,
+			headers: { 'Accept': 'application/json' },
+		});
+		log('POST', '/verify-turnstile', res.status, '');
+
+		if (res.ok) {
+			const data = await res.json();
+			if (data.token) {
+				TOKEN = data.token;
+				log('INFO', '', 200, 'New token issued: ' + TOKEN.slice(0, 20) + '...');
+			}
+		}
+
+		hideTurnstileModal();
+		fetchSlots(date);
+	} catch (err) {
+		statusEl.textContent = '\uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4.';
+		statusEl.className = 'turnstile-status error';
+		log('POST', '/verify-turnstile', 0, err.message);
+	}
+}
 
 log('GET', '/', 200, 'Token issued: ' + TOKEN.slice(0, 20) + '...');
 renderCalendar();
