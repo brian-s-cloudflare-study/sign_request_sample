@@ -43,7 +43,7 @@ The Worker provides a second verification layer with its own Turnstile widget fo
 
 ### Reference UX (캐치테이블 패턴)
 
-이 샘플은 캐치테이블(https://app.catchtable.co.kr)의 예약 흐름을 참고���여 구현합니다.
+이 샘플은 캐치테이블(https://app.catchtable.co.kr)의 예약 흐름을 참고하여 구현합니다.
 
 **관찰된 패턴:**
 
@@ -63,7 +63,7 @@ GET  /                → 메인 페이지 + signed token 발행 (HMAC)
 GET  /slots?date=X    → 날짜별 데이터 조회 (signed URL 필요)
      ├─ valid token   → 200 + 데이터 응답
      ├─ rate limited  → 429 + retry-after
-     └─ invalid/없���  → Turnstile challenge 페이지 반환
+     └─ invalid/없음  → Turnstile challenge 페이지 반환
 POST /verify-turnstile → challenge 통과 → signed URL 발급 → redirect
 ```
 
