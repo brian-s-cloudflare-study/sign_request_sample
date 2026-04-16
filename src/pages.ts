@@ -4,7 +4,7 @@ export function renderMainPage(verifyToken: string, turnstileSiteKey: string): s
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>온류 — 예약 샘플</title>
+	<title>테스트 예약 페이지</title>
 	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 	<style>
 		:root {
@@ -96,19 +96,13 @@ export function renderMainPage(verifyToken: string, turnstileSiteKey: string): s
 		.shop-thumb {
 			width: 100%;
 			height: 180px;
-			background: linear-gradient(145deg, #ff9933 0%, #ff5a00 55%, #cc3300 100%);
+			background: url('https://picsum.photos/seed/reservation/480/180') center/cover no-repeat;
+			background-color: #e0e0e0;
 			position: relative;
 			overflow: hidden;
 			display: flex;
 			align-items: flex-end;
 			padding: 20px;
-		}
-		.shop-thumb::before {
-			content: '';
-			position: absolute;
-			inset: 0;
-			background-image: radial-gradient(circle, rgba(255,255,255,0.1) 1.5px, transparent 1.5px);
-			background-size: 24px 24px;
 		}
 		.shop-thumb::after {
 			content: '';
@@ -272,7 +266,7 @@ export function renderMainPage(verifyToken: string, turnstileSiteKey: string): s
 			background: var(--primary);
 			color: #fff;
 			font-weight: 700;
-			transform: scale(1.12);
+			transform: scale(0.9);
 			box-shadow: var(--shadow-primary);
 		}
 		.calendar-grid .day.today:not(.selected) {
@@ -556,13 +550,13 @@ export function renderMainPage(verifyToken: string, turnstileSiteKey: string): s
 <div class="page-wrap">
 
 	<div class="header">
-		<div class="header-logo">온<em>류</em></div>
+		<div class="header-logo">테스트 <em>예약</em></div>
 		<span class="header-badge">SAMPLE</span>
 	</div>
 
 	<div class="shop-info">
 		<div class="shop-thumb">
-			<div class="shop-thumb-name">온류</div>
+			<div class="shop-thumb-name">테스트 예약</div>
 		</div>
 		<div class="shop-body">
 			<div class="shop-tags">
@@ -570,7 +564,7 @@ export function renderMainPage(verifyToken: string, turnstileSiteKey: string): s
 				<span class="shop-tag">한식</span>
 				<span class="shop-tag">코스요리</span>
 			</div>
-			<div class="shop-name">온류 (Sign Request Sample)</div>
+			<div class="shop-name">테스트 예약 페이지</div>
 			<div class="shop-meta">
 				<span class="shop-rating">4.7</span>
 				<span class="meta-sep"></span>
@@ -627,6 +621,9 @@ let currentDate = new Date();
 let selectedDate = null;
 let requestCount = 0;
 let activeRetryInterval = null;
+let isFetching = false;
+let lastFetchTime = 0;
+const FETCH_COOLDOWN = 300;
 
 function formatDate(d) {
 	const y = d.getFullYear();
@@ -699,6 +696,8 @@ function renderCalendar(direction) {
 
 	document.querySelectorAll('.day:not(.disabled)').forEach(function(btn) {
 		btn.addEventListener('click', function() {
+			const now = Date.now();
+			if (isFetching || now - lastFetchTime < FETCH_COOLDOWN) return;
 			selectedDate = new Date(btn.dataset.date + 'T00:00:00');
 			if (activeRetryInterval) {
 				clearInterval(activeRetryInterval);
@@ -756,7 +755,8 @@ function startRetryCountdown(totalSeconds, date) {
 }
 
 async function fetchSlots(date) {
-	requestCount++;
+	isFetching = true;
+	lastFetchTime = Date.now();
 	showLoading();
 	const url = '/slots?date=' + date + '&verify=' + encodeURIComponent(TOKEN);
 
@@ -767,10 +767,6 @@ async function fetchSlots(date) {
 		if (res.status === 429) {
 			const retryAfter = parseInt(res.headers.get('Retry-After') || '10', 10);
 			const requireTurnstile = res.headers.get('X-Require-Turnstile') === 'true';
-			log('GET', '/slots?date=' + date, 429,
-				requireTurnstile
-					? 'Turnstile required'
-					: 'Rate limited \u2014 retry after ' + retryAfter + 's');
 			if (requireTurnstile) {
 				showTurnstileModal(date);
 			} else {
@@ -804,6 +800,8 @@ async function fetchSlots(date) {
 		document.getElementById('slots-container').innerHTML =
 			'<div class="error-state">\u26a0\ufe0f \ub124\ud2b8\uc6cc\ud06c \uc624\ub958</div>';
 		log('GET', '/slots?date=' + date, 0, err.message);
+	} finally {
+		isFetching = false;
 	}
 }
 
@@ -886,7 +884,6 @@ async function onTurnstileSuccess(turnstileToken, date) {
 }
 
 log('GET', '/', 200, 'Token issued: ' + TOKEN.slice(0, 20) + '...');
-renderCalendar();
 
 const todayStr = formatDate(new Date());
 selectedDate = new Date();

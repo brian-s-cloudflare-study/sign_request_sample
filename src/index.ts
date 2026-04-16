@@ -128,6 +128,11 @@ async function handleSlots(url: URL, env: Env, clientIp: string): Promise<Respon
 
 	const dateStr = url.searchParams.get('date') ?? '';
 	const date = new Date(dateStr);
+
+	if (!dateStr || Number.isNaN(date.getTime())) {
+		return Response.json({ error: 'Invalid date parameter' }, { status: 400 });
+	}
+
 	const dayOfWeek = date.getDay();
 	const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 	const slots = isWeekend ? MOCK_SLOTS.weekend : MOCK_SLOTS.weekday;
